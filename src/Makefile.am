@@ -7,12 +7,15 @@ intercrop_CXXFLAGS = \
 	$(libpng_CFLAGS) \
 	$(libjpeg_CFLAGS) \
 	$(liblilyengine_CFLAGS) \
-	-Wall
+	-Wall \
+	--std=c++11
 
 intercrop_LDFLAGS = \
 	$(libpng_LIBS) \
 	$(libjpeg_LIBS) \
-	$(liblilyengine_LIBS)
+	$(liblilyengine_LIBS) \
+	-Wall \
+	 --std=c++11
 
 
 

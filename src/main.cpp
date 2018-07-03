@@ -1,6 +1,7 @@
 #include <lilyengine/utils.h>
 
 #include <png.h>
+#include <jpeglib.h>
 
 #include <iostream>
 
@@ -32,7 +33,6 @@ ExPop::PixelImage<uint8_t> *pixelImageLoadPNG(const std::string &data)
     ExPop::PixelImage_Dimension height = 0;
     ExPop::PixelImage_Dimension channelCount = 0;
     unsigned char colorType = 0;
-    unsigned char bitDepth = 0;
     size_t rowBytes = 0;
 
     ExPop::PixelImage<uint8_t> *newImage = nullptr;
@@ -48,8 +48,6 @@ ExPop::PixelImage<uint8_t> *pixelImageLoadPNG(const std::string &data)
                 png_infop info_ptr = png_create_info_struct(png_ptr);
 
                 if(info_ptr) {
-
-                    std::cout << "READING A PNG" << std::endl;
 
                     unsigned char *rawData = nullptr;
                     unsigned char **rowPtrs = nullptr;
@@ -124,9 +122,6 @@ ExPop::PixelImage<uint8_t> *pixelImageLoadPNG(const std::string &data)
                     if(channelCount) {
                         newImage = new ExPop::PixelImage<uint8_t>(width, height, channelCount);
                     }
-
-                    std::cout << "ChannelCount: " << channelCount << std::endl;
-                    std::cout << "Bitdepth: " << (int)bitDepth << std::endl;
 
                     // Move data into the actual PixelImage.
                     if(newImage) {
@@ -246,8 +241,6 @@ inline uint8_t *pixelImageSavePNG(
                 png_write_image(png_ptr, rowPtrs);
                 png_write_end(png_ptr, NULL);
 
-                std::cout << writeState.outBuffer.size() << std::endl;
-
                 ret = new uint8_t[writeState.outBuffer.size()];
                 memcpy(ret, &writeState.outBuffer[0], writeState.outBuffer.size());
                 *length = writeState.outBuffer.size();
@@ -275,19 +268,250 @@ bool pixelImageSavePNGToFile(
     return ret;
 }
 
-int main(int argc, char *argv[])
+inline uint8_t *pixelImageSaveJPEG(
+    const ExPop::PixelImage<uint8_t> &img, size_t *length)
 {
-    ExPop::PixelImage<uint8_t> *img = pixelImageLoadPNGFromFile(argv[1]);
+    jpeg_compress_struct compressStruct = {0};
 
-    std::cout << "Image: " << img << std::endl;
+    jpeg_error_mgr errorManager;
+    jpeg_std_error(&errorManager);
+    compressStruct.err = &errorManager;
 
-    if(img) {
-        pixelImageSaveTGAToFile(*img, "out.tga");
+    jpeg_create_compress(&compressStruct);
+    uint8_t *outBuffer = nullptr;
+    unsigned long outSize = 0;
+    jpeg_mem_dest(&compressStruct, &outBuffer, &outSize);
+
+    compressStruct.image_width = img.getWidth();
+    compressStruct.image_height = img.getHeight();
+    compressStruct.input_components = img.getChannelCount();
+
+    if(img.getChannelCount() == 3) {
+        compressStruct.in_color_space = JCS_RGB;
+    } else if(img.getChannelCount() == 1) {
+        compressStruct.in_color_space = JCS_GRAYSCALE;
+    } else {
+        // Whatever this is, it's not something we can save here.
+        jpeg_destroy_compress(&compressStruct);
+        return nullptr;
     }
 
+    jpeg_set_defaults(&compressStruct);
+    jpeg_set_quality(&compressStruct, 99, true);
+    jpeg_start_compress(&compressStruct, true);
 
-    pixelImageSavePNGToFile(*img, "out.png");
-    delete img;
+    for(ExPop::PixelImage_Dimension y = 0; y < img.getHeight(); y++) {
+        uint8_t *rowPtr = (uint8_t*)&img.getData(0, y, 0);
+        jpeg_write_scanlines(
+            &compressStruct,
+            &rowPtr,
+            1);
+    }
+
+    jpeg_finish_compress(&compressStruct);
+    jpeg_destroy_compress(&compressStruct);
+
+    *length = outSize;
+    return outBuffer;
+}
+
+bool pixelImageSaveJPEGToFile(
+    const ExPop::PixelImage<uint8_t> &img, const std::string &filename)
+{
+    size_t imgLen = 0;
+    uint8_t *data = pixelImageSaveJPEG(img, &imgLen);
+
+    bool ret = (0 == ExPop::FileSystem::saveFile(filename, (char*)data, imgLen));
+
+    free(data);
+
+    return ret;
+}
+
+struct PixelImage_JPEGErrorHandler
+{
+    jpeg_error_mgr libjpegErrorManager; // Must be first.
+    jmp_buf returnJump;
+};
+
+void pixelImage_jpegError(j_common_ptr decompressStruct)
+{
+    PixelImage_JPEGErrorHandler *realErrorHandler =
+        (PixelImage_JPEGErrorHandler*)decompressStruct->err;
+
+    longjmp(realErrorHandler->returnJump, 1);
+}
+
+ExPop::PixelImage<uint8_t> *pixelImageLoadJPEG(const std::string &data)
+{
+    jpeg_decompress_struct decompressStruct = {0};
+
+    PixelImage_JPEGErrorHandler errorManager = {0};
+    jpeg_std_error(&errorManager.libjpegErrorManager);
+    decompressStruct.err = &errorManager.libjpegErrorManager;
+    errorManager.libjpegErrorManager.error_exit = pixelImage_jpegError;
+
+    ExPop::PixelImage<uint8_t> *ret = nullptr;
+
+    if(!setjmp(errorManager.returnJump)) {
+
+        jpeg_create_decompress(&decompressStruct);
+        jpeg_mem_src(&decompressStruct, (uint8_t*)&data[0], data.size());
+        jpeg_read_header(&decompressStruct, true);
+        jpeg_start_decompress(&decompressStruct);
+
+        // size_t bufferSize =
+        //     decompressStruct.output_width *
+        //     decompressStruct.output_height *
+        //     decompressStruct.output_components;
+
+        // uint8_t *buffer = new uint8_t[bufferSize];
+
+        ret = new ExPop::PixelImage<uint8_t>(
+            decompressStruct.output_width,
+            decompressStruct.output_height,
+            decompressStruct.output_components);
+
+        // memset(buffer, 0, bufferSize);
+
+        while(decompressStruct.output_scanline < decompressStruct.output_height) {
+            // uint8_t *scanlinePtr = &buffer[
+            //     decompressStruct.output_width * decompressStruct.output_scanline];
+            uint8_t *scanlinePtr =
+                (uint8_t*)&ret->getData(0, decompressStruct.output_scanline, 0);
+
+            jpeg_read_scanlines(
+                &decompressStruct,
+                &scanlinePtr, 1);
+        }
+
+        jpeg_finish_decompress(&decompressStruct);
+    }
+
+    jpeg_destroy_decompress(&decompressStruct);
+
+    // delete[] buffer;
+
+    return ret;
+}
+
+ExPop::PixelImage<uint8_t> *pixelImageLoadJPEGFromFile(const std::string &filename)
+{
+    std::string fileData = ExPop::FileSystem::loadFileString(filename);
+    if(fileData.size()) {
+        return pixelImageLoadJPEG(fileData);
+    }
+    return nullptr;
+}
+
+ExPop::PixelImage<uint8_t> *pixelImageLoad(const std::string &fileData)
+{
+    ExPop::PixelImage<uint8_t> *ret = nullptr;
+    if(fileData.size()) {
+        ret = pixelImageLoadJPEG(fileData);
+        if(!ret)
+            ret = pixelImageLoadPNG(fileData);
+        if(!ret)
+            ret = ExPop::pixelImageLoadTGA(&fileData[0], fileData.size());
+    }
+    return ret;
+}
+
+ExPop::PixelImage<uint8_t> *pixelImageLoadFromFile(const std::string &filename)
+{
+    std::string fileData = ExPop::FileSystem::loadFileString(filename);
+    ExPop::PixelImage<uint8_t> *ret = nullptr;
+    if(fileData.size()) {
+        return pixelImageLoad(fileData);
+    }
+    return ret;
+}
+
+bool pixelImageSaveToFile(
+    const ExPop::PixelImage<uint8_t> &img, const std::string &filename)
+{
+    bool ret = false;
+    if(ExPop::stringEndsWith<char>(".png", filename)) {
+        ret = pixelImageSavePNGToFile(img, filename);
+    } else if(ExPop::stringEndsWith<char>(".tga", filename)) {
+        ret = pixelImageSaveTGAToFile(img, filename);
+    } else if(ExPop::stringEndsWith<char>(".jpg", filename) ||
+        ExPop::stringEndsWith<char>(".jpeg", filename))
+    {
+        ret = pixelImageSaveJPEGToFile(img, filename);
+    }
+    return ret;
+}
+
+int main(int argc, char *argv[])
+{
+    ExPop::CommandlineParser cmdParser(argv[0]);
+
+    // Dimensions.
+    ExPop::PixelImage_Dimension width = 512;
+    cmdParser.addVariableHandler("width", &width);
+    cmdParser.setParameterAlias("width", "w");
+
+    ExPop::PixelImage_Dimension height = 512;
+    cmdParser.addVariableHandler("height", &height);
+    cmdParser.setParameterAlias("height", "h");
+
+    // Output filename.
+    std::string outputFilename;
+    cmdParser.addVariableHandler("out", &outputFilename);
+    cmdParser.setParameterAlias("out", "o");
+
+    // Input filename handler.
+    std::vector<std::string> inputFilenames;
+    cmdParser.addHandler<std::string>(
+        "",
+        [&inputFilenames](const std::string &fname){
+            inputFilenames.push_back(fname);
+        });
+
+    cmdParser.setDoc(
+        "Kiri's Cropping Tool 0.1",
+        "[options] <imagefile> [<imagefile>...]",
+        R"(This tool attemps to resize and crop an image to the most complex
+region to match the aspect ratio of the given size. The region
+complexity is considered to be the region with the most edges as
+detected by a Sobel edge detection filter done against a luminance map
+of the input images for RGB and RGBA inputs, or against the image
+itself for Grayscale and Grayscale + alpha images.)",
+        R"(Copyright (c) 2018 Kiri Jolly)");
+
+    cmdParser.setParameterDoc("width", "Output image width. Defaults to 512.", "integer");
+    cmdParser.setParameterDoc("height", "Output image height. Defaults to 512.", "integer");
+    cmdParser.setParameterDoc("out",
+        R"(Output image filename. Defaults to the same filename as the input.
+        Output name may not be specified separately when multiple
+        files are specified for processing.)", "name");
+
+    if(!cmdParser.handleCommandline(argc, argv)) {
+        return cmdParser.getErrorFlag();
+    }
+
+    if(inputFilenames.size() == 0) {
+        std::cerr << cmdParser.getHelpText() << std::endl;
+        return 1;
+    }
+
+    if(outputFilename.size() != 0 && inputFilenames.size() != 1) {
+        std::cerr << "Error: Multiple input files specified when using --out." << std::endl;
+        return 1;
+    }
+
+    for(size_t i = 0; i < inputFilenames.size(); i++) {
+        ExPop::PixelImage<uint8_t> *img = pixelImageLoadFromFile(inputFilenames[i]);
+
+        std::cout << "Image: " << img << std::endl;
+
+        if(img) {
+            pixelImageSaveTGAToFile(*img, "out.tga");
+        }
+
+        delete img;
+    }
 
     return 0;
 }
