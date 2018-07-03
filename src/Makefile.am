@@ -1,7 +1,10 @@
 
 bin_PROGRAMS = intercrop
 
-intercrop_SOURCES = main.cpp
+intercrop_SOURCES = \
+	main.cpp \
+	pixelimage_png.cpp pixelimage_png.h \
+	pixelimage_jpeg.cpp pixelimage_jpeg.h
 
 intercrop_CXXFLAGS = \
 	$(libpng_CFLAGS) \
