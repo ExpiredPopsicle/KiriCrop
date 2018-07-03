@@ -1,0 +1,4 @@
+* TODO Replace instances of "PixelImage_Dimension" with "PixelImage_Coordinate" as appropriate.
+* TODO Finish README.md.
+* TODO Figure out what's wrong with the scaling again.
+

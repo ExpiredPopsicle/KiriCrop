@@ -224,7 +224,7 @@ int main(int argc, char *argv[])
     cmdParser.setDoc(
         "Kiri's Cropping Tool 0.1",
         "[options] <imagefile> [<imagefile>...]",
-        R"(This tool attemps to resize and crop an image to the most complex
+        R"(This tool attempts to resize and crop an image to the most complex
 region to match the aspect ratio of the given size. The region
 complexity is considered to be the region with the most edges as
 detected by a Sobel edge detection filter done against a luminance map

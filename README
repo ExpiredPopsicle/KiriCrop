@@ -1,0 +1,17 @@
+----------------------------------------------------------------------
+
+  Kiri's Cropping Tool 0.1
+
+  Copyright (c) 2018 Kiri Jolly
+    http://expiredpopsicle.com
+    expiredpopsicle@gmail.com
+
+----------------------------------------------------------------------
+
+This tool attempts to resize and crop an image to the most complex
+region to match the aspect ratio of the given size. The region
+complexity is considered to be the region with the most edges as
+detected by a Sobel edge detection filter done against a luminance map
+of the input images for RGB and RGBA inputs, or against the image
+itself for Grayscale and Grayscale + alpha images.
+
