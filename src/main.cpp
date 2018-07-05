@@ -212,12 +212,14 @@ namespace ExPop
     template<typename ValueType, ScalingType scalingType>
     inline PixelImage<ValueType, scalingType> *pixelImageGaussianBlur(
         PixelImageBase *img,
-        float radius,
+        float radius_x,
+        float radius_y,
         PixelImage_EdgeMode edgeMode = PixelImage_EdgeMode_Clamp)
     {
         // radius = radius * (float(img->getWidth()) + float(img->getHeight())) / 2.0f;
 
-        size_t intRadius = size_t(radius) + 1;
+        size_t intRadius_x = size_t(radius_x) + 1;
+        size_t intRadius_y = size_t(radius_y) + 1;
 
         PixelImage<ValueType, scalingType> *out =
             new PixelImage<ValueType, scalingType>(
@@ -225,9 +227,10 @@ namespace ExPop
                 img->getHeight(),
                 img->getChannelCount());
 
-        size_t diameter = intRadius * 2;
+        size_t diameter_x = intRadius_x * 2;
+        size_t diameter_y = intRadius_y * 2;
 
-        float *gaussianKernel = new float[diameter * diameter]; // diameter squared.
+        float *gaussianKernel = new float[diameter_y * diameter_x]; // diameter squared.
 
         const float thing = 1.0f;
 
@@ -235,32 +238,32 @@ namespace ExPop
 
         // Construct an appropriately-sized kernel.
         float gaussianTotal = 0.0f;
-        for(size_t y = 0; y < diameter; y++) {
-            float ydelta = ((float(y) - float(intRadius)) / radius) * 2.0f;
+        for(size_t y = 0; y < diameter_y; y++) {
+            float ydelta = ((float(y) - float(intRadius_y)) / radius_y) * 2.0f;
             float ysqr = ydelta * ydelta;
 
-            for(size_t x = 0; x < diameter; x++) {
-                float xdelta = ((float(x) - float(intRadius)) / radius) * 2.0f;
+            for(size_t x = 0; x < diameter_x; x++) {
+                float xdelta = ((float(x) - float(intRadius_x)) / radius_x) * 2.0f;
                 float xsqr = xdelta * xdelta;
 
-                gaussianKernel[x + y * diameter] =
+                gaussianKernel[x + y * diameter_x] =
                     (1.0f / (2.0f * 3.14159 * thing * thing)) *
                     powf(2.718281828459f, -(xsqr + ysqr) / (2.0f * thing * thing));
 
                 // std::cout << gaussianKernel[x + y * diameter] << "  ";
 
-                gaussianTotal += gaussianKernel[x + y * diameter];
+                gaussianTotal += gaussianKernel[x + y * diameter_x];
             }
             // std::cout << std::endl;
         }
 
         // std::cout << "Total: " << gaussianTotal << std::endl;
 
-        for(size_t y = 0; y < diameter; y++) {
-            for(size_t x = 0; x < diameter; x++) {
+        for(size_t y = 0; y < diameter_y; y++) {
+            for(size_t x = 0; x < diameter_x; x++) {
                 // float *px = out->getPixel(x, y);
                 // *px = (gaussianKernel[x + y * diameter]) * 1.0f;
-                gaussianKernel[x + y * diameter] /= gaussianTotal;
+                gaussianKernel[x + y * diameter_x] /= gaussianTotal;
             }
         }
 
@@ -277,13 +280,13 @@ namespace ExPop
 
                     float ktotal = 0.0f;
 
-                    for(int ky = 0; ky < int(diameter); ky++) {
+                    for(int ky = 0; ky < int(diameter_y); ky++) {
 
-                        for(int kx = 0; kx < int(diameter); kx++) {
+                        for(int kx = 0; kx < int(diameter_x); kx++) {
 
                             const float srcPx = img->getDouble(
-                                x + (kx - intRadius),
-                                y + (ky - intRadius),
+                                x + (kx - intRadius_x),
+                                y + (ky - intRadius_y),
                                 c,
                                 edgeMode);
 
@@ -292,7 +295,7 @@ namespace ExPop
                             float diff = fabs(srcPx - origPx);
                             differenceAmount += diff * diff;
 
-                            const float &kernelPt = gaussianKernel[kx + ky * diameter];
+                            const float &kernelPt = gaussianKernel[kx + ky * diameter_x];
                             // if(differenceAmount <= similarityThreshold * similarityThreshold) {
 
                                 dstPx += srcPx * kernelPt;
@@ -404,7 +407,7 @@ itself for Grayscale and Grayscale + alpha images.)",
 
         // DONOTCHECKIN
         ExPop::PixelImage<uint8_t> *blurredImg =
-            ExPop::pixelImageGaussianBlur<uint8_t, ExPop::ScalingType_OneIsMaxInt>(img, 4);
+            ExPop::pixelImageGaussianBlur<uint8_t, ExPop::ScalingType_OneIsMaxInt>(img, 4, 1);
         assert(blurredImg);
         pixelImageSaveToFile(*blurredImg, "blurred.png");
 
