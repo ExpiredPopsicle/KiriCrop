@@ -404,14 +404,6 @@ itself for Grayscale and Grayscale + alpha images.)",
 
         ExPop::PixelImage<uint8_t> *img = pixelImageLoadFromFile(inputFilenames[i]);
 
-
-        // DONOTCHECKIN
-        ExPop::PixelImage<uint8_t> *blurredImg =
-            ExPop::pixelImageGaussianBlur<uint8_t, ExPop::ScalingType_OneIsMaxInt>(img, 4, 1);
-        assert(blurredImg);
-        pixelImageSaveToFile(*blurredImg, "blurred.png");
-
-
         std::cout << "Processing: " << inputFilenames[i] << std::endl;
 
         if(img) {
@@ -456,7 +448,22 @@ itself for Grayscale and Grayscale + alpha images.)",
 
         // Scale the sobel-filtered version of the image and the color image down.
         ExPop::PixelImage<uint8_t> *scaledSobel = ExPop::pixelImageScale<uint8_t>(*sobel, newWidth, newHeight);
-        ExPop::PixelImage<uint8_t> *scaledImg = ExPop::pixelImageScale<uint8_t, ExPop::ScalingType_OneIsMaxInt>(*img, newWidth, newHeight);
+
+        // DONOTCHECKIN
+        if(newWidth < img->getWidth() || newHeight < img->getHeight()) {
+            ExPop::PixelImage<uint8_t> *blurredImg =
+                ExPop::pixelImageGaussianBlur<uint8_t, ExPop::ScalingType_OneIsMaxInt>(
+                    img,
+                    newWidth  < img->getWidth()  ? (0.5f * float(img->getWidth())  / float(newWidth))  : 1,
+                    newHeight < img->getHeight() ? (0.5f * float(img->getHeight()) / float(newHeight)) : 1);
+
+            delete img;
+            img = blurredImg;
+        }
+
+        ExPop::PixelImage<uint8_t> *scaledImg =
+            ExPop::pixelImageScale<uint8_t, ExPop::ScalingType_OneIsMaxInt>(
+                *img, newWidth, newHeight);
 
         // Find the "most interesting" part of the image.
         ExPop::PixelImage_Dimension axes[2] = {
