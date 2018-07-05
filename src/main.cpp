@@ -206,6 +206,125 @@ float getRowOrColValue(
 
 
 
+namespace ExPop
+{
+    // DONOTCHECKIN - img should be ref, not ptr
+    template<typename ValueType, ScalingType scalingType>
+    inline PixelImage<ValueType, scalingType> *pixelImageGaussianBlur(
+        PixelImageBase *img,
+        float radius,
+        PixelImage_EdgeMode edgeMode = PixelImage_EdgeMode_Clamp)
+    {
+        // radius = radius * (float(img->getWidth()) + float(img->getHeight())) / 2.0f;
+
+        size_t intRadius = size_t(radius) + 1;
+
+        PixelImage<ValueType, scalingType> *out =
+            new PixelImage<ValueType, scalingType>(
+                img->getWidth(),
+                img->getHeight(),
+                img->getChannelCount());
+
+        size_t diameter = intRadius * 2;
+
+        float *gaussianKernel = new float[diameter * diameter]; // diameter squared.
+
+        const float thing = 1.0f;
+
+        // TODO: Remap radius to normalized image space.
+
+        // Construct an appropriately-sized kernel.
+        float gaussianTotal = 0.0f;
+        for(size_t y = 0; y < diameter; y++) {
+            float ydelta = ((float(y) - float(intRadius)) / radius) * 2.0f;
+            float ysqr = ydelta * ydelta;
+
+            for(size_t x = 0; x < diameter; x++) {
+                float xdelta = ((float(x) - float(intRadius)) / radius) * 2.0f;
+                float xsqr = xdelta * xdelta;
+
+                gaussianKernel[x + y * diameter] =
+                    (1.0f / (2.0f * 3.14159 * thing * thing)) *
+                    powf(2.718281828459f, -(xsqr + ysqr) / (2.0f * thing * thing));
+
+                // std::cout << gaussianKernel[x + y * diameter] << "  ";
+
+                gaussianTotal += gaussianKernel[x + y * diameter];
+            }
+            // std::cout << std::endl;
+        }
+
+        // std::cout << "Total: " << gaussianTotal << std::endl;
+
+        for(size_t y = 0; y < diameter; y++) {
+            for(size_t x = 0; x < diameter; x++) {
+                // float *px = out->getPixel(x, y);
+                // *px = (gaussianKernel[x + y * diameter]) * 1.0f;
+                gaussianKernel[x + y * diameter] /= gaussianTotal;
+            }
+        }
+
+        for(PixelImage_Coordinate y = 0; y < img->getHeight(); y++) {
+
+            for(PixelImage_Coordinate x = 0; x < img->getWidth(); x++) {
+
+                for(PixelImage_Coordinate c = 0; c < img->getChannelCount(); c++) {
+
+                    const float origPx = img->getDouble(x, y, c, edgeMode);
+                    float dstPx = 0.0f;
+
+                    float correctionAmount = 0.0f;
+
+                    float ktotal = 0.0f;
+
+                    for(int ky = 0; ky < int(diameter); ky++) {
+
+                        for(int kx = 0; kx < int(diameter); kx++) {
+
+                            const float srcPx = img->getDouble(
+                                x + (kx - intRadius),
+                                y + (ky - intRadius),
+                                c,
+                                edgeMode);
+
+                            float differenceAmount = 0.0f;
+
+                            float diff = fabs(srcPx - origPx);
+                            differenceAmount += diff * diff;
+
+                            const float &kernelPt = gaussianKernel[kx + ky * diameter];
+                            // if(differenceAmount <= similarityThreshold * similarityThreshold) {
+
+                                dstPx += srcPx * kernelPt;
+                                ktotal += kernelPt;
+
+                            // } else {
+                            //     correctionAmount += kernelPt;
+                            // }
+                        }
+                    }
+
+                    // // std::cout << "ktotal: " << ktotal << std::endl;
+                    // if(correctionAmount) {
+                    //     dstPx *= 1.0f / (1.0f - correctionAmount);
+                    // }
+
+                    out->setDouble(x, y, c, dstPx);
+                }
+            }
+        }
+
+        return out;
+    }
+}
+
+
+
+
+
+
+
+
 
 
 
@@ -281,6 +400,14 @@ itself for Grayscale and Grayscale + alpha images.)",
     for(size_t i = 0; i < inputFilenames.size(); i++) {
 
         ExPop::PixelImage<uint8_t> *img = pixelImageLoadFromFile(inputFilenames[i]);
+
+
+        // DONOTCHECKIN
+        ExPop::PixelImage<uint8_t> *blurredImg =
+            ExPop::pixelImageGaussianBlur<uint8_t, ExPop::ScalingType_OneIsMaxInt>(img, 4);
+        assert(blurredImg);
+        pixelImageSaveToFile(*blurredImg, "blurred.png");
+
 
         std::cout << "Processing: " << inputFilenames[i] << std::endl;
 
