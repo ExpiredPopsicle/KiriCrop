@@ -15,3 +15,57 @@ detected by a Sobel edge detection filter done against a luminance map
 of the input images for RGB and RGBA inputs, or against the image
 itself for Grayscale and Grayscale + alpha images.
 
+----------------------------------------------------------------------
+  Installation
+----------------------------------------------------------------------
+
+First make sure libjpeg-dev and libpng-dev are installed...
+
+    sudo apt-get install libjpeg-dev libpng-dev
+
+Aside from that you pretty much just need Git...
+
+    sudo apt-get install git
+
+If you're installing from a Git repository, you need to have Autotools
+installed...
+
+    sudo apt-get install automake autoconf
+
+And a C++ compiler.
+
+If installing from Git, first generate the configure script.
+
+   ./autogen.sh
+
+Run the configure script.
+
+    ./configure
+
+Build.
+
+    make
+
+Installation on Debian-based systems will probably want to use
+checkinstall, but if you want to skip the package manager or you're
+using another OS, you can just run...
+
+    sudo make install
+
+----------------------------------------------------------------------
+  Usage
+----------------------------------------------------------------------
+
+Run kcrop with the image of your choice specified on the command line.
+The --width and --height parameters must be specified. If the --out
+option is not used, the original image will be overwritten.
+
+    kcrop image.png                   \
+        --out=some_other_filename.png \
+        --width=128                   \
+        --height=128
+
+----------------------------------------------------------------------
+
+Butts.
+
