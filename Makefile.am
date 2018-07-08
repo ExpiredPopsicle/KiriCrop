@@ -32,5 +32,5 @@
 
 AUTOMAKE_OPTIONS = foreign
 SUBDIRS = src
-EXTRA_DIST = README.md CONTRIBUTING.md COPYING.md autogen.sh
+EXTRA_DIST = README COPYING autogen.sh Lily-Engine-Utils/*
 

@@ -32,7 +32,7 @@
 
 AC_PREREQ([2.69])
 AC_INIT(kcrop, 0.1, expiredpopsicle@gmail.com)
-AM_INIT_AUTOMAKE([subdir-objects])
+AM_INIT_AUTOMAKE([1.9 subdir-objects tar-pax])
 
 AC_PROG_CXX
 AC_PROG_RANLIB
