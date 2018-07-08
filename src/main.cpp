@@ -200,12 +200,12 @@ int main(int argc, char *argv[])
     ExPop::CommandlineParser cmdParser(argv[0]);
 
     // Dimensions.
-    ExPop::PixelImage_Dimension width = 512;
-    cmdParser.addVariableHandler("width", &width);
+    ExPop::PixelImage_Dimension cmdLineWidth = 0;
+    cmdParser.addVariableHandler("width", &cmdLineWidth);
     cmdParser.setParameterAlias("width", "w");
 
-    ExPop::PixelImage_Dimension height = 512;
-    cmdParser.addVariableHandler("height", &height);
+    ExPop::PixelImage_Dimension cmdLineHeight = 0;
+    cmdParser.addVariableHandler("height", &cmdLineHeight);
     cmdParser.setParameterAlias("height", "h");
 
     // Output filename.
@@ -232,8 +232,8 @@ of the input images for RGB and RGBA inputs, or against the image
 itself for Grayscale and Grayscale + alpha images.)",
         R"(Copyright (c) 2018 Kiri Jolly)");
 
-    cmdParser.setParameterDoc("width", "Output image width. Defaults to 512.", "integer");
-    cmdParser.setParameterDoc("height", "Output image height. Defaults to 512.", "integer");
+    cmdParser.setParameterDoc("width", "Output image width. Defaults to input image width.", "integer");
+    cmdParser.setParameterDoc("height", "Output image height. Defaults to input image height.", "integer");
     cmdParser.setParameterDoc("out",
         R"(Output image filename. Defaults to the same filename as the input.
         Output name may not be specified separately when multiple
@@ -253,14 +253,10 @@ itself for Grayscale and Grayscale + alpha images.)",
         return 1;
     }
 
-    if(height <= 0 || width <= 0) {
-        std::cerr << "Error: Invalid size specified." << std::endl;
-        return 1;
-    }
-
-    float desiredAspectRatio = float(width) / float(height);
-
     for(size_t i = 0; i < inputFilenames.size(); i++) {
+
+        ExPop::PixelImage_Dimension width = cmdLineWidth;
+        ExPop::PixelImage_Dimension height = cmdLineHeight;
 
         ExPop::PixelImage<uint8_t> *img = pixelImageLoadFromFile(inputFilenames[i]);
 
@@ -271,6 +267,16 @@ itself for Grayscale and Grayscale + alpha images.)",
             std::cerr << "       Unsupported image format or type." << std::endl;
             return 1;
         }
+
+        if(width == 0) {
+            width = img->getWidth();
+        }
+
+        if(height == 0) {
+            height = img->getHeight();
+        }
+
+        float desiredAspectRatio = float(width) / float(height);
 
         ExPop::PixelImage<uint8_t> *lum = extractLuminance(*img);
         ExPop::PixelImage<uint8_t> *sobel = sobelFilter(*lum);

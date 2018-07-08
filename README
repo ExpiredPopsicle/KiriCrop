@@ -23,14 +23,15 @@ First make sure libjpeg-dev and libpng-dev are installed...
 
     sudo apt-get install libjpeg-dev libpng-dev
 
-Aside from that you pretty much just need Git...
-
-    sudo apt-get install git
-
 If you're installing from a Git repository, you need to have Autotools
 installed...
 
     sudo apt-get install automake autoconf
+
+Aside from that you need Git (to automatically pull the latest
+Lily-Engine-Utils)...
+
+    sudo apt-get install git
 
 And a C++ compiler.
 
@@ -57,8 +58,9 @@ using another OS, you can just run...
 ----------------------------------------------------------------------
 
 Run kcrop with the image of your choice specified on the command line.
-The --width and --height parameters must be specified. If the --out
-option is not used, the original image will be overwritten.
+The --width and --height parameters should be specified, but will
+default to the original image width and height if they are not. If the
+--out option is not used, the original image will be overwritten.
 
     kcrop image.png                   \
         --out=some_other_filename.png \
