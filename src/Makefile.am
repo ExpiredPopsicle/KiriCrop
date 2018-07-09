@@ -45,11 +45,13 @@ kcrop_CXXFLAGS = \
 	--std=c++11 -O3 -g
 
 kcrop_LDFLAGS = \
-	$(libpng_LIBS) \
-	$(libjpeg_LIBS) \
-	$(liblilyengine_LIBS) \
 	-Wall \
 	 --std=c++11 -O3 -g
+
+kcrop_LDADD = \
+	$(libpng_LIBS) \
+	$(libjpeg_LIBS) \
+	$(liblilyengine_LIBS)
 
 
 
