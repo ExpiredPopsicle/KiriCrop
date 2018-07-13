@@ -98,6 +98,13 @@ ExPop::PixelImage<uint8_t> *pixelImageLoadPNG(const std::string &data)
 
                         png_set_palette_to_rgb(png_ptr);
                         png_set_tRNS_to_alpha(png_ptr);
+                        png_set_expand_gray_1_2_4_to_8(png_ptr);
+
+                        // FIXME: In the future, we can maybe just do
+                        // arbitrary bit depths. But right now we'll
+                        // just stick to coercing everything to be
+                        // 8-bit per channel.
+                        png_set_strip_16(png_ptr);
 
                         png_read_update_info(png_ptr, info_ptr);
 
