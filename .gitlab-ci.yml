@@ -1,0 +1,10 @@
+build:
+    stage: build
+    script:
+        - apt-get update
+        - apt-get install build-essential
+        - apt-get install automake autoconf
+        - bash autogen.sh
+        - ./configure
+        - make
+
