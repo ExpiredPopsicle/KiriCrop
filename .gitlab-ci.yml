@@ -1,0 +1,9 @@
+build:
+    stage: build
+    script:
+        - apt-get update
+        - apt-get install -y build-essential automake autoconf libpng-dev libjpeg-dev git pkg-config
+        - bash autogen.sh
+        - ./configure
+        - make
+
