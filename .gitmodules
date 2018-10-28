@@ -1,0 +1,3 @@
+[submodule "Lily-Engine-Utils"]
+	path = Lily-Engine-Utils
+	url = https://git.intoxicoding.com/Intoxicoding/Lily-Engine-Utils.git
