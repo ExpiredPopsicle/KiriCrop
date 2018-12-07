@@ -1,0 +1,16 @@
+# Autotools generated crap.
+Makefile
+Makefile.in
+aclocal.m4
+config.log
+config.status
+configure
+depcomp
+install-sh
+missing
+.deps
+autom4te.cache
+
+# Actual build artifacts.
+*.o
+src/kcrop
